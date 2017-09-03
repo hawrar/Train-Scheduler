@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<head>
+	<title>Train Table</title>
+	<meta charset="UTF-8">
+	<!-- Latest compiled and minified Bootstrap CSS & JS Libraries -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+	<!-- Firebase Reference -->
+	<script src="https://cdn.firebase.com/js/client/2.4.1/firebase.js"></script>
+
+	<!-- Moment.js Reference -->
+ 	<script src="https://cdn.jsdelivr.net/momentjs/2.12.0/moment.min.js"></script>
+ 	<!-- Additonal CSS Created by me -->
+<!-- 	<link rel="stylesheet" href="">
+ -->
+</head>
+<body>
+	<div class="container">
+		<div class="jumbotron">
+			<h1 class="text-center">Train Schedule</h1>
+			<h3 class="text-center">Locomotive Lane</h3>
+		</div>
+
+		<div class="row">
+			<div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+
+			<!-- Current Trains -->
+				<div class="panel panel-primary">
+					<div class="panel-heading">
+						<h3 class="panel-title"><strong>Current Train</strong></h3>
+					</div>
+					<div class="panel-body">
+						<table class="table table-hover" id='trainTable'>
+							<thead>
+								<tr>
+									<th>Train Name</th>
+									<th>Line</th>
+									<th>Destination</th>
+									<th>Frequency</th>
+									<th>Next Arrival</th>
+									<th>Minutes Away</th>
+								</tr>
+							</thead>
+							<tbody>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+			<!-- Add New Trains -->
+				<div class="panel panel-primary">
+					<div class="panel-heading">
+						<h3 class="panel-title"><strong>Add a New Train</strong></h3>
+					</div>
+
+					<div class="panel-body">
+						<!-- Entry Form -->
+						<form>
+							<div class="form-group">
+								<label for="">Train Name</label>
+								<input type="text" class="form-control" id="trainNameInput">
+							</div>
+
+							<div class="form-group">
+								<label for="">Line</label>
+								<input type="text" class="form-control" id="lineInput">
+							</div>
+
+							<div class="form-group">
+								<label for="">Destination</label>
+								<input type="text" class="form-control" id="destinationInput">
+							</div>
+
+							<div class="form-group">
+								<label for="">First Train Time (HH:mm - Military Time)</label>
+								<input type="text" class="form-control" id="trainTimeInput">
+							</div>
+
+							<div class="form-group">
+								<label for="">Frequency (in minuntes)</label>
+								<input type="text" class="form-control" id="frequencyInput">
+							</div>
+							
+							<button type="submit" class="btn btn-primary" id="addTrainBtn">Submit</button>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- Javascript -->
+
+	<script type="text/javascript">
+	$(document).ready(function(){
+	// 1. Link to Firebase
+	var trainData = new Firebase("https://train-database.firebaseio.com/");
+
+	// 2. Button for adding Trains
+	$("#addTrainBtn").on("click", function(){
+
+		// Grabs user input and assign to variables
+		var trainName = $("#trainNameInput").val().trim();
+		var lineName = $("#lineInput").val().trim();
+		var destination = $("#destinationInput").val().trim();
+		var trainTimeInput = moment($("#trainTimeInput").val().trim(), "HH:mm").subtract(10, "years").format("X");;
+		var frequencyInput = $("#frequencyInput").val().trim();
+
+		// Test for variables entered
+		console.log(trainName);
+		console.log(lineName);
+		console.log(destination);
+		console.log(trainTimeInput);
+		console.log(frequencyInput);
+
+		// Creates local "temporary" object for holding train data
+		// Will push this to firebase
+		var newTrain = {
+			name:  trainName,
+			line: lineName,
+			destination: destination,
+			trainTime: trainTimeInput,
+			frequency: frequencyInput,
+		}
+
+		// pushing trainInfo to Firebase
+		trainData.push(newTrain);
+
+		// clear text-boxes
+		$("#trainNameInput").val("");
+		$("#lineInput").val("");
+		$("#destinationInput").val("");
+		$("#trainInput").val("");
+		$("#frequencyInput").val("");
+
+		// Prevents page from refreshing
+		return false;
+	});
+
+	trainData.on("child_added", function(childSnapshot, prevChildKey){
+
+		console.log(childSnapshot.val());
+
+		// assign firebase variables to snapshots.
+		var firebaseName = childSnapshot.val().name;
+		var firebaseLine = childSnapshot.val().line;
+		var firebaseDestination = childSnapshot.val().destination;
+		var firebaseTrainTimeInput = childSnapshot.val().trainTime;
+		var firebaseFrequency = childSnapshot.val().frequency;
+		
+		var diffTime = moment().diff(moment.unix(firebaseTrainTimeInput), "minutes");
+		var timeRemainder = moment().diff(moment.unix(firebaseTrainTimeInput), "minutes") % firebaseFrequency ;
+		var minutes = firebaseFrequency - timeRemainder;
+
+		var nextTrainArrival = moment().add(minutes, "m").format("hh:mm A"); 
+		
+		// Test for correct times and info
+		console.log(minutes);
+		console.log(nextTrainArrival);
+		console.log(moment().format("hh:mm A"));
+		console.log(nextTrainArrival);
+		console.log(moment().format("X"));
+
+		// Append train info to table on page
+		$("#trainTable > tbody").append("<tr><td>" + firebaseName + "</td><td>" + firebaseLine + "</td><td>"+ firebaseDestination + "</td><td>" + firebaseFrequency + " mins" + "</td><td>" + nextTrainArrival + "</td><td>" + minutes + "</td></tr>");
+
+	});
+});
+</script>
+</body>
+</html>
